@@ -216,118 +216,196 @@ function iniciarAvaliacoes() {
     var form = document.getElementById("form-avaliacao");
     var lista = document.getElementById("avaliacoes-lista");
     var resumo = document.getElementById("avaliacoes-resumo");
-    if (!form || !lista) return;
 
-    var CHAVE = "baobole-avaliacoes";
+    if (!form || !lista || !resumo) return;
+
+    var SUPABASE_URL =
+        "https://oailnejupxgeooutbkaw.supabase.co/rest/v1/avaliacoes";
+
+    var SUPABASE_KEY =
+        "sb_publishable_OW-y_bihSpMEO9A1Bvup_w_Q2DMoevq";
+
     var nome = document.getElementById("nome-avaliacao");
     var nota = document.getElementById("nota");
     var comentario = document.getElementById("comentario");
 
-    var avaliacoes = carregar();
-
-    function carregar() {
-        try {
-            return JSON.parse(localStorage.getItem(CHAVE)) || [];
-        } catch (erro) {
-            return [];
-        }
-    }
-
-    function salvar() {
-        try {
-            localStorage.setItem(CHAVE, JSON.stringify(avaliacoes));
-        } catch (erro) { /* sem localStorage: a lista funciona só nesta visita */ }
-    }
+    var cabecalhos = {
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json"
+    };
 
     function estrelas(n) {
         return "★".repeat(n) + "☆".repeat(5 - n);
     }
 
-    function desenhar() {
-        lista.innerHTML = "";
+    async function carregarAvaliacoes() {
+        try {
+            var resposta = await fetch(
+                SUPABASE_URL + "?select=nome,nota,comentario,data&order=data.desc",
+                {
+                    method: "GET",
+                    headers: cabecalhos
+                }
+            );
 
-        if (avaliacoes.length === 0) {
-            resumo.textContent = "Ainda não há avaliações. Seja o primeiro a avaliar!";
-            return;
+            if (!resposta.ok) {
+                throw new Error(await resposta.text());
+            }
+
+            var avaliacoes = await resposta.json();
+
+            lista.innerHTML = "";
+
+            if (avaliacoes.length === 0) {
+                resumo.textContent =
+                    "Ainda não há avaliações. Seja o primeiro a avaliar!";
+                return;
+            }
+
+            var soma = avaliacoes.reduce(function (total, a) {
+                return total + Number(a.nota);
+            }, 0);
+
+            var media = (soma / avaliacoes.length)
+                .toFixed(1)
+                .replace(".", ",");
+
+            resumo.textContent =
+                "Nota média: " + media + " de 5 (" +
+                avaliacoes.length +
+                (avaliacoes.length === 1
+                    ? " avaliação)"
+                    : " avaliações)");
+
+            avaliacoes.forEach(function (a) {
+                var item = document.createElement("article");
+                item.className = "avaliacao-item";
+
+                var topo = document.createElement("div");
+                topo.className = "avaliacao-topo";
+
+                var autor = document.createElement("strong");
+                autor.textContent = a.nome;
+
+                var notaEl = document.createElement("span");
+                notaEl.className = "avaliacao-estrelas";
+                notaEl.textContent = estrelas(Number(a.nota));
+                notaEl.setAttribute(
+                    "aria-label",
+                    "Nota " + a.nota + " de 5"
+                );
+
+                var texto = document.createElement("p");
+                texto.textContent = a.comentario;
+
+                var data = document.createElement("small");
+                data.textContent = a.data
+                    ? new Date(a.data).toLocaleDateString("pt-BR")
+                    : "";
+
+                topo.appendChild(autor);
+                topo.appendChild(notaEl);
+                item.appendChild(topo);
+                item.appendChild(texto);
+                item.appendChild(data);
+                lista.appendChild(item);
+            });
+
+        } catch (erro) {
+            console.error("Erro ao carregar avaliações:", erro);
+            resumo.textContent =
+                "Não foi possível carregar as avaliações. Tente novamente mais tarde.";
         }
-
-        var soma = avaliacoes.reduce(function (total, a) { return total + a.nota; }, 0);
-        var media = (soma / avaliacoes.length).toFixed(1).replace(".", ",");
-        resumo.textContent = "Nota média: " + media + " de 5 (" + avaliacoes.length +
-            (avaliacoes.length === 1 ? " avaliação)" : " avaliações)");
-
-        // mais recentes primeiro
-        avaliacoes.slice().reverse().forEach(function (a) {
-            var item = document.createElement("article");
-            item.className = "avaliacao-item";
-
-            var topo = document.createElement("div");
-            topo.className = "avaliacao-topo";
-
-            var autor = document.createElement("strong");
-            autor.textContent = a.nome;
-
-            var notaEl = document.createElement("span");
-            notaEl.className = "avaliacao-estrelas";
-            notaEl.textContent = estrelas(a.nota);
-            notaEl.setAttribute("aria-label", "Nota " + a.nota + " de 5");
-
-            var texto = document.createElement("p");
-            texto.textContent = a.comentario;
-
-            var data = document.createElement("small");
-            data.textContent = a.data;
-
-            topo.appendChild(autor);
-            topo.appendChild(notaEl);
-            item.appendChild(topo);
-            item.appendChild(texto);
-            item.appendChild(data);
-            lista.appendChild(item);
-        });
     }
 
-    form.addEventListener("submit", function (e) {
+    form.addEventListener("submit", async function (e) {
         e.preventDefault();
 
         var ok = true;
 
-        if (nome.value.trim().length < 2) {
-            mostrarErro(nome, "Digite seu nome.");
+        if (nome.value.trim().length < 2 ||
+            nome.value.trim().length > 80) {
+            mostrarErro(nome, "Digite um nome entre 2 e 80 caracteres.");
             ok = false;
-        } else { limparErro(nome); }
+        } else {
+            limparErro(nome);
+        }
 
-        if (nota.value === "") {
-            mostrarErro(nota, "Escolha uma nota.");
-            ok = false;
-        } else { limparErro(nota); }
+        var valorNota = Number(nota.value);
 
-        if (comentario.value.trim().length < 5) {
-            mostrarErro(comentario, "Escreva um comentário (mínimo de 5 caracteres).");
+        if (!nota.value ||
+            !Number.isInteger(valorNota) ||
+            valorNota < 1 ||
+            valorNota > 5) {
+            mostrarErro(nota, "Escolha uma nota de 1 a 5.");
             ok = false;
-        } else { limparErro(comentario); }
+        } else {
+            limparErro(nota);
+        }
+
+        if (comentario.value.trim().length < 5 ||
+            comentario.value.trim().length > 1000) {
+            mostrarErro(
+                comentario,
+                "Escreva um comentário entre 5 e 1000 caracteres."
+            );
+            ok = false;
+        } else {
+            limparErro(comentario);
+        }
 
         if (!ok) {
             mostrarStatus(form, "Confira os campos destacados.", "erro");
             return;
         }
 
-        avaliacoes.push({
-            nome: nome.value.trim(),
-            nota: parseInt(nota.value, 10),
-            comentario: comentario.value.trim(),
-            data: new Date().toLocaleDateString("pt-BR")
-        });
+        var botao = form.querySelector('[type="submit"]');
 
-        salvar();
-        desenhar();
-        form.reset();
-        mostrarStatus(form, "Obrigado pela sua avaliação!", "sucesso");
+        if (botao) botao.disabled = true;
+
+        try {
+            var resposta = await fetch(SUPABASE_URL, {
+                method: "POST",
+                headers: {
+                    ...cabecalhos,
+                    "Prefer": "return=minimal"
+                },
+                body: JSON.stringify({
+                    nome: nome.value.trim(),
+                    nota: valorNota,
+                    comentario: comentario.value.trim()
+                })
+            });
+
+            if (!resposta.ok) {
+                throw new Error(await resposta.text());
+            }
+
+            form.reset();
+
+            mostrarStatus(
+                form,
+                "Obrigado pela sua avaliação!",
+                "sucesso"
+            );
+
+            await carregarAvaliacoes();
+
+        } catch (erro) {
+            console.error("Erro ao enviar avaliação:", erro);
+
+            mostrarStatus(
+                form,
+                "Não foi possível enviar. Verifique a configuração do Supabase e tente novamente.",
+                "erro"
+            );
+        } finally {
+            if (botao) botao.disabled = false;
+        }
     });
 
-    desenhar();
+    carregarAvaliacoes();
 }
-
 
 /* ---------- 4) MENU ATIVO AO ROLAR ---------- */
 
