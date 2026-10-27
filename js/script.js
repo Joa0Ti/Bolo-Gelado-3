@@ -1,5 +1,5 @@
 /* =========================================================
-   BÃO BOLÊ - 3ª ENTREGA: JAVASCRIPT E INTERATIVIDADE
+   BÃOBOLÊ - 3ª ENTREGA: JAVASCRIPT E INTERATIVIDADE
    1) Carrossel   2) Validação do contato
    3) Avaliações  4) Menu ativo ao rolar a página
    5) Rolagem suave
@@ -191,13 +191,13 @@ function iniciarFormularioContato() {
         var telefone = "5518981434867";
 
         var texto =
-            "Olá, Bão Bolê! Gostaria de entrar em contato.\n\n" +
+            "Olá, BãoBolê! Gostaria de entrar em contato.\n\n" +
             "Nome: " + nome.value.trim() + "\n" +
             "E-mail: " + email.value.trim() + "\n" +
             "Mensagem: " + mensagem.value.trim();
 
         
-        var telefone = "5518981434867"; // Coloque seu número com DDI e DDD
+        var telefone = "5518981434867"; 
 
         var link = "https://api.whatsapp.com/send?phone=" 
             + telefone 
