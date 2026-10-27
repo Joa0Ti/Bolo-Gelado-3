@@ -188,7 +188,7 @@ function iniciarFormularioContato() {
             return;
         }
 
-        var telefone = "5518996215671";
+        var telefone = "5518981434867";
 
         var texto =
             "Olá, Bão Bolê! Gostaria de entrar em contato.\n\n" +
@@ -196,10 +196,16 @@ function iniciarFormularioContato() {
             "E-mail: " + email.value.trim() + "\n" +
             "Mensagem: " + mensagem.value.trim();
 
-        var link = "https://wa.me/" + telefone +
-            "?text=" + encodeURIComponent(texto);
+        
+        var telefone = "5518981434867"; // Coloque seu número com DDI e DDD
 
-        window.open(link, "_blank");
+        var link = "https://api.whatsapp.com/send?phone=" 
+            + telefone 
+            + "&text=" 
+            + encodeURIComponent(texto);
+
+window.open(link, "_blank");
+;
 
         mostrarStatus(
             form,
